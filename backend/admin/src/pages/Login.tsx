@@ -45,21 +45,17 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 relative overflow-hidden">
-      {/* Animated Background Orbs */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="animate-float absolute -top-20 -left-20 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl" />
-        <div className="animate-float-delayed absolute top-1/2 -right-32 w-80 h-80 bg-indigo-500/20 rounded-full blur-3xl" />
-        <div className="animate-float absolute bottom-0 left-1/3 w-64 h-64 bg-violet-500/15 rounded-full blur-3xl" />
-        {/* Grid pattern */}
-        <div
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage: `linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)`,
-            backgroundSize: '40px 40px',
-          }}
-        />
-      </div>
+    <div 
+      className="min-h-screen flex items-center justify-center relative overflow-hidden"
+      style={{
+        backgroundImage: `url('/bg.jpg')`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
+      }}
+    >
+      {/* Dark overlay for readability */}
+      <div className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm pointer-events-none"></div>
 
       <div className="animate-scale-in relative z-10 w-full max-w-md px-4">
         {/* Card */}
@@ -70,9 +66,11 @@ export default function Login() {
           <div className="p-8 sm:p-10">
             {/* Logo */}
             <div className="flex flex-col items-center mb-8">
-              <div className="w-16 h-16 rounded-2xl gradient-blue flex items-center justify-center mb-4 shadow-lg shadow-blue-500/30">
-                <ShieldCheck className="text-white" size={30} />
-              </div>
+              <img 
+                src="/logo.png" 
+                alt="SecureAttend Logo" 
+                className="h-24 w-auto mb-4 object-contain drop-shadow-xl" 
+              />
               <h1 className="text-2xl font-bold text-white tracking-tight">SecureAttend</h1>
               <p className="text-blue-200/70 mt-1 text-sm">Administration Portal</p>
             </div>
