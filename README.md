@@ -22,3 +22,8 @@ This repository is organized into two main directories:
 - **Frontend (Web):** React, Vite, Tailwind CSS, TypeScript
 - **Frontend (Mobile):** Flutter, Dart
 - **Security:** Argon2 Password Hashing, JWT Authentication
+
+## Recent Updates
+
+- **UI Enhancements:** Redesigned the admin login page with a high-resolution building background, a custom logo, and a sleek frosted glassmorphism login card. Simplified the main dashboard to provide a clean, unified view.
+- **Database & Data Seeding:** Generated and applied Alembic database migrations to include newly added student/faculty profile columns (phone, blood group, address). Automatically seeded the backend SQLite database with hundreds of realistic student and faculty records across various departments to fully populate the dashboard and directories.
