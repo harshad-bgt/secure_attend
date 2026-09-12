@@ -24,6 +24,8 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
         expire = datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_expire_minutes)
     to_encode.update({"exp": expire, "type": "access", "jti": str(uuid.uuid4())})
     encoded_jwt = jwt.encode(to_encode, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+    if isinstance(encoded_jwt, bytes):
+        return encoded_jwt.decode("utf-8")
     return encoded_jwt
 
 def create_refresh_token(data: dict, expires_delta: timedelta | None = None) -> str:
@@ -34,6 +36,8 @@ def create_refresh_token(data: dict, expires_delta: timedelta | None = None) -> 
         expire = datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expire_days)
     to_encode.update({"exp": expire, "type": "refresh", "jti": str(uuid.uuid4())})
     encoded_jwt = jwt.encode(to_encode, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+    if isinstance(encoded_jwt, bytes):
+        return encoded_jwt.decode("utf-8")
     return encoded_jwt
 
 def create_attendance_qr_token(session_id: int, expires_in_seconds: int = 10) -> str:
@@ -55,6 +59,8 @@ def create_face_proof_token(student_id: int) -> str:
         "exp": expire
     }
     encoded_jwt = jwt.encode(to_encode, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+    if isinstance(encoded_jwt, bytes):
+        return encoded_jwt.decode("utf-8")
     return encoded_jwt
 
 def verify_face_proof_token(token: str) -> Optional[int]:

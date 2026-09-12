@@ -9,6 +9,9 @@ import FacultyList from './pages/faculty/FacultyList';
 import FacultyDetails from './pages/faculty/FacultyDetails';
 import AcademicOverview from './pages/academic/AcademicOverview';
 import AttendanceSessions from './pages/attendance/AttendanceSessions';
+import TimetableManagement from './pages/erp/TimetableManagement';
+import NoticesManagement from './pages/erp/NoticesManagement';
+import MissingFeatures from './pages/MissingFeatures';
 
 import { ThemeProvider } from './components/ThemeProvider';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -44,6 +47,13 @@ function App() {
             <Route path="faculty/:id" element={<FacultyDetails />} />
             
             <Route path="academic" element={<AcademicOverview />} />
+            
+            <Route path="erp/timetable" element={<TimetableManagement />} />
+            <Route path="erp/notices" element={<NoticesManagement />} />
+            
+            <Route path="reports" element={<MissingFeatures />} />
+            <Route path="settings" element={<MissingFeatures />} />
+            <Route path="audit-logs" element={<MissingFeatures />} />
             
             <Route path="attendance" element={<AttendanceSessions />} />
           </Route>

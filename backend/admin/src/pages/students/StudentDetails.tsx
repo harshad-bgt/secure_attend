@@ -51,9 +51,6 @@ export default function StudentDetails() {
     return <div className="p-8 text-center text-red-500">Student not found</div>;
   }
 
-  // Placeholder for Face Enrollment - this will be tied to a real backend field in Stage 2
-   
-
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between">

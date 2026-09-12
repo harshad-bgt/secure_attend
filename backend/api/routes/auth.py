@@ -117,38 +117,22 @@ def logout(request: RefreshRequest, db: Session = Depends(get_db)):
 
 @router.get("/me")
 def get_me(current_user: User = Depends(get_current_user)):
-    role_value = current_user.role.name.value
     profile = {
         "id": current_user.id,
         "email": current_user.email,
-        "role": role_value,
+        "role": current_user.role.name.value,
         "is_active": current_user.is_active,
         "first_name": "",
-        "last_name": "",
-        "responsibilities": {
-            "is_hod": False,
-            "is_amc": False,
-            "is_gfm": False
-        }
+        "last_name": ""
     }
-
-    if role_value == "ADMIN":
-        profile["first_name"] = "Admin"
-        profile["last_name"] = "User"
-        profile["responsibilities"] = {"is_hod": True, "is_amc": True, "is_gfm": True}
-    elif hasattr(current_user, 'student_profile') and current_user.student_profile:
+    
+    if hasattr(current_user, 'student_profile') and current_user.student_profile:
         profile["first_name"] = current_user.student_profile.first_name
         profile["last_name"] = current_user.student_profile.last_name
         profile["student_id"] = current_user.student_profile.roll_number
         profile["face_profile_active"] = current_user.student_profile.face_profile_active
     elif hasattr(current_user, 'faculty_profile') and current_user.faculty_profile:
-        fp = current_user.faculty_profile
-        profile["first_name"] = fp.first_name
-        profile["last_name"] = fp.last_name
-        profile["responsibilities"] = {
-            "is_hod": bool(getattr(fp, 'is_hod', False)),
-            "is_amc": bool(getattr(fp, 'is_amc', False)),
-            "is_gfm": bool(getattr(fp, 'is_gfm', False))
-        }
-
+        profile["first_name"] = current_user.faculty_profile.first_name
+        profile["last_name"] = current_user.faculty_profile.last_name
+        
     return profile

@@ -40,15 +40,12 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
         'address': _addressCtrl.text.trim().isEmpty ? null : _addressCtrl.text.trim(),
         'blood_group': _bloodGroupCtrl.text.trim().isEmpty ? null : _bloodGroupCtrl.text.trim(),
       });
-      // Wait, if ApiClient doesn't have put, I will use post and update the backend to support POST instead of PUT just in case, or I will use ApiClient.dio.put.
-      // Let's just use ApiClient.dio.put
-      
       if (response.statusCode == 200) {
         // Refresh auth profile to sync
         await context.read<AuthService>().fetchProfile();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profile synced successfully! (Data-Sync Test Passed)')),
+            const SnackBar(content: Text('Profile updated successfully!')),
           );
         }
       } else {
@@ -71,7 +68,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
     final profile = auth.userProfile ?? {};
 
     return Scaffold(
-      appBar: AppBar(title: const Text('My Profile (Sync Test)')),
+      appBar: AppBar(title: const Text('My Profile')),
       body: _isLoading 
         ? const Center(child: CircularProgressIndicator())
         : SingleChildScrollView(
@@ -99,7 +96,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey),
                   ),
                   const SizedBox(height: 32),
-                  Text('Contact Information (Sync Test)', style: Theme.of(context).textTheme.titleMedium),
+                  Text('Contact Information', style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _phoneCtrl,
@@ -133,7 +130,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                   FilledButton.icon(
                     onPressed: _updateProfile,
                     icon: const Icon(Icons.sync),
-                    label: const Text('Update & Sync Profile'),
+                    label: const Text('Update Profile'),
                     style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
                   ),
                 ],

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { UserPlus, Search, Eye, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { UserPlus, Search, Eye, ShieldAlert, ShieldCheck, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import apiClient from '../../api/client';
@@ -11,10 +11,12 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '.
 import { Badge } from '../../components/ui/Badge';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Dialog } from '../../components/ui/Dialog';
+import BulkImportDialog from './BulkImportDialog';
 
 export default function StudentsList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -50,10 +52,16 @@ export default function StudentsList() {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Students</h1>
           <p className="text-slate-500 dark:text-slate-400">Manage student accounts and enrollment</p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)} className="flex items-center gap-2">
-          <UserPlus size={18} />
-          <span>Add Student</span>
-        </Button>
+        <div className="flex gap-3">
+          <Button onClick={() => setIsBulkImportOpen(true)} variant="outline" className="flex items-center gap-2 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700">
+            <Download size={18} />
+            <span>Bulk Import</span>
+          </Button>
+          <Button onClick={() => setIsCreateOpen(true)} className="flex items-center gap-2">
+            <UserPlus size={18} />
+            <span>Add Student</span>
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -132,6 +140,7 @@ export default function StudentsList() {
       </Card>
 
       <CreateStudentDialog isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} />
+      <BulkImportDialog isOpen={isBulkImportOpen} onClose={() => setIsBulkImportOpen(false)} />
     </div>
   );
 }

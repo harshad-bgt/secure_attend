@@ -7,12 +7,9 @@ class ApiClient {
     final prefs = await SharedPreferences.getInstance();
     final customIp = prefs.getString('server_ip');
     if (customIp != null && customIp.isNotEmpty) {
-      if (customIp.startsWith('http')) {
-        return '$customIp/api/v1';
-      }
       return 'http://$customIp:8000/api/v1';
     }
-    return 'http://10.193.37.72:8000/api/v1'; // Local LAN IP
+    return 'http://10.14.223.107:8000/api/v1'; // Local LAN IP
   }
   static Future<Map<String, String>> _getHeaders() async {
     final prefs = await SharedPreferences.getInstance();

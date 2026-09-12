@@ -5,8 +5,9 @@ import 'student_qr_scanner.dart';
 import 'student_face_verification.dart';
 import 'student_face_enrollment.dart';
 import 'student_profile.dart';
-import 'placeholders.dart';
-
+import 'student_timetable.dart';
+import 'student_marks.dart';
+import 'notices_screen.dart';
 class StudentDashboard extends StatefulWidget {
   const StudentDashboard({super.key});
 
@@ -25,8 +26,8 @@ class _StudentDashboardState extends State<StudentDashboard> {
 
     final List<Widget> _screens = [
       _buildHome(context, auth, profile, isEnrolled),
-      const PlaceholderScreen(title: 'Timetable'),
-      const PlaceholderScreen(title: 'Marks & Results'),
+      const StudentTimetableScreen(),
+      const StudentMarksScreen(),
       const StudentProfileScreen(),
     ];
 
@@ -52,7 +53,12 @@ class _StudentDashboardState extends State<StudentDashboard> {
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_none),
-            onPressed: () {},
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NoticesScreen()),
+              );
+            },
           ),
           IconButton(
             icon: const Icon(Icons.logout),
@@ -67,7 +73,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
           children: [
             // Header Section
             Text(
-              'Good Morning, ',
+              'Good Morning, ${profile['first_name'] ?? ''}'.trim(),
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: Theme.of(context).colorScheme.primary,
@@ -75,7 +81,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
             ),
             const SizedBox(height: 8),
             Text(
-              'ID: ',
+              'ID: ${profile['student_id'] ?? ''}'.trim(),
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Colors.grey.shade600,
                     fontWeight: FontWeight.w500,
@@ -116,13 +122,6 @@ class _StudentDashboardState extends State<StudentDashboard> {
                                   ),
                             ),
                           ],
-                        ),
-                        Text(
-                          '87%',
-                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
                         ),
                       ],
                     ),

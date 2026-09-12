@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../core/api_client.dart';
 import 'faculty_live_session.dart';
+import 'notices_screen.dart';
 
 class FacultyDashboard extends StatefulWidget {
   const FacultyDashboard({super.key});
@@ -122,6 +123,15 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
       appBar: AppBar(
         title: const Text('SecureAttend', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5)),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_none),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NoticesScreen()),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _fetchActiveSessions,

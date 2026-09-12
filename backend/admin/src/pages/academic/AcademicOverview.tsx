@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Building2, BookOpen, Plus } from 'lucide-react';
+import { Building2, BookOpen, Users, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import apiClient from '../../api/client';
@@ -11,7 +11,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Ca
 import { Dialog } from '../../components/ui/Dialog';
 
 export default function AcademicOverview() {
-  const [activeTab, setActiveTab] = useState<'departments' | 'subjects'>('departments');
+  const [activeTab, setActiveTab] = useState<'departments' | 'subjects' | 'divisions'>('departments');
 
   return (
     <div className="space-y-6">
@@ -43,9 +43,20 @@ export default function AcademicOverview() {
           <BookOpen size={18} />
           <span>Subjects</span>
         </button>
+        <button
+          className={`flex items-center space-x-2 px-6 py-3 font-medium transition-colors border-b-2 ${
+            activeTab === 'divisions' 
+              ? 'border-blue-600 text-blue-600 dark:text-blue-500' 
+              : 'border-transparent text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+          }`}
+          onClick={() => setActiveTab('divisions')}
+        >
+          <Users size={18} />
+          <span>Divisions</span>
+        </button>
       </div>
 
-      {activeTab === 'departments' ? <DepartmentsTab /> : <SubjectsTab />}
+      {activeTab === 'departments' ? <DepartmentsTab /> : activeTab === 'subjects' ? <SubjectsTab /> : <DivisionsTab />}
     </div>
   );
 }
@@ -249,6 +260,50 @@ function SubjectsTab() {
           </div>
         </form>
       </Dialog>
+    </Card>
+  );
+}
+
+function DivisionsTab() {
+  const { data: divisions = [], isLoading } = useQuery({
+    queryKey: ['divisions'],
+    queryFn: async () => {
+      const { data } = await apiClient.get('/academic/divisions');
+      return data;
+    }
+  });
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row justify-between items-center">
+        <CardTitle>Divisions</CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        {isLoading ? (
+          <div className="p-8 text-center text-slate-500">Loading...</div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Division Name</TableHead>
+                <TableHead>Semester ID</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {divisions.length > 0 ? divisions.map((d: any) => (
+                <TableRow key={d.id}>
+                  <TableCell className="font-medium">{d.name}</TableCell>
+                  <TableCell>{d.semester_id}</TableCell>
+                </TableRow>
+              )) : (
+                <TableRow>
+                  <TableCell colSpan={2} className="text-center py-6 text-slate-500">No divisions found.</TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
     </Card>
   );
 }

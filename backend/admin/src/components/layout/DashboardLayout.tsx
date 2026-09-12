@@ -1,5 +1,5 @@
 import { Outlet, NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, UserSquare2, LogOut, Bell, ShieldCheck, Sun, Moon, BookOpen, QrCode } from 'lucide-react';
+import { LayoutDashboard, Users, UserSquare2, LogOut, Bell, ShieldCheck, Sun, Moon, BookOpen, QrCode, Calendar, Megaphone, FileText, Settings, ShieldAlert } from 'lucide-react';
 import { useTheme } from '../ThemeProvider';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -43,6 +43,15 @@ export default function DashboardLayout() {
           <NavItem to="/faculty" icon={<UserSquare2 size={20} />} label="Faculty Directory" />
           <NavItem to="/students" icon={<Users size={20} />} label="Student Hub" />
           <NavItem to="/attendance" icon={<QrCode size={20} />} label="Attendance Portal" />
+          
+          <div className="mt-4 mb-2 px-4 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">ERP Features</div>
+          <NavItem to="/erp/timetable" icon={<Calendar size={20} />} label="Timetable" />
+          <NavItem to="/erp/notices" icon={<Megaphone size={20} />} label="Notices" />
+          
+          <div className="mt-4 mb-2 px-4 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">System</div>
+          <NavItem to="/reports" icon={<FileText size={20} />} label="Reports" />
+          <NavItem to="/audit-logs" icon={<ShieldAlert size={20} />} label="Audit Logs" />
+          <NavItem to="/settings" icon={<Settings size={20} />} label="Settings" />
         </div>
         
         <div className="p-4 border-t dark:border-slate-800/50">
@@ -62,7 +71,7 @@ export default function DashboardLayout() {
         <header className="h-16 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b dark:border-slate-800/50 flex items-center justify-between px-6 z-10 sticky top-0">
           <div className="flex items-center gap-4">
             <h1 className="text-lg font-semibold text-slate-800 dark:text-slate-100 hidden sm:block">
-              SecureAttend Dashboard
+              Department Portal
             </h1>
           </div>
           
