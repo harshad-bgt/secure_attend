@@ -63,6 +63,33 @@ def require_admin():
 def require_faculty():
     return require_role(RoleName.FACULTY)
 
+def require_admin_or_faculty():
+    return require_role(RoleName.ADMIN, RoleName.FACULTY)
+
+def get_faculty_scopes(db: Session, faculty_user_id: int) -> dict:
+    from models import FacultySubjectAssignment
+    assignments = db.query(FacultySubjectAssignment).filter(
+        FacultySubjectAssignment.faculty_id == faculty_user_id
+    ).all()
+    
+    allowed_divisions = set()
+    allowed_subjects = set()
+    allowed_semesters = set()
+    
+    for a in assignments:
+        if a.division_id:
+            allowed_divisions.add(a.division_id)
+        if a.subject_id:
+            allowed_subjects.add(a.subject_id)
+        if a.semester_id:
+            allowed_semesters.add(a.semester_id)
+            
+    return {
+        "divisions": allowed_divisions,
+        "subjects": allowed_subjects,
+        "semesters": allowed_semesters
+    }
+
 def require_student():
     return require_role(RoleName.STUDENT)
 

@@ -32,6 +32,9 @@ class AuditLogResponse(BaseModel):
 class DivisionResponse(BaseModel):
     id: int
     name: str
+    semester_id: Optional[int] = None
+    department_id: Optional[int] = None
+    is_active: bool = True
 
     model_config = {"from_attributes": True}
 
@@ -69,3 +72,19 @@ class LiveAttendanceResponse(BaseModel):
 class AttendanceMarkRequest(BaseModel):
     qr_token: str
     face_proof_token: str
+    latitude: float
+    longitude: float
+
+class CampusSettingsBase(BaseModel):
+    latitude: float
+    longitude: float
+    radius_meters: float
+
+class CampusSettingsCreate(CampusSettingsBase):
+    pass
+
+class CampusSettingsResponse(CampusSettingsBase):
+    id: int
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}

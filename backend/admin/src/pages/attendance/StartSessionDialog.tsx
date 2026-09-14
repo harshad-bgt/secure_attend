@@ -27,6 +27,18 @@ export default function StartSessionDialog({ isOpen, onClose, onSessionStarted }
     enabled: isOpen
   });
 
+  const { data: activeSessions } = useQuery({
+    queryKey: ['activeSessions'],
+    queryFn: async () => {
+      const { data } = await apiClient.get('/admin/attendance-sessions/active');
+      return data;
+    },
+    enabled: isOpen
+  });
+
+  const activeFacultyIds = new Set(activeSessions?.map((s: any) => s.faculty_id) || []);
+  const availableFaculties = faculties?.filter((f: any) => !activeFacultyIds.has(f.user_id));
+
   const { data: subjects } = useQuery({
     queryKey: ['subjectList'],
     queryFn: async () => {
@@ -87,7 +99,7 @@ export default function StartSessionDialog({ isOpen, onClose, onSessionStarted }
             className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2"
           >
             <option value="">Select Faculty...</option>
-            {faculties?.map((f: any) => (
+            {availableFaculties?.map((f: any) => (
               <option key={f.user_id} value={f.user_id}>{f.first_name} {f.last_name}</option>
             ))}
           </select>

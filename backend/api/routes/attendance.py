@@ -6,18 +6,40 @@ from datetime import datetime, timezone
 
 from database import get_db
 from models import AttendanceSession, Faculty, Subject, Division, User, RoleName
-from dependencies import require_role
+from dependencies import require_role, require_admin, require_admin_or_faculty, get_faculty_scopes, get_current_user
 from schemas import AttendanceSessionCreate, AttendanceSessionResponse, LiveAttendanceResponse
 from security import create_attendance_qr_token
 
-router = APIRouter(prefix="/attendance-sessions", tags=["Attendance Sessions"], dependencies=[Depends(require_role(RoleName.ADMIN, RoleName.FACULTY))])
+router = APIRouter(prefix="/attendance-sessions", tags=["Attendance Sessions"], dependencies=[Depends(require_admin_or_faculty())])
 
 @router.post("", response_model=AttendanceSessionResponse)
-def create_session(session_data: AttendanceSessionCreate, db: Session = Depends(get_db)):
+def create_session(session_data: AttendanceSessionCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role.name == RoleName.FACULTY:
+        if session_data.faculty_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Cannot create session for another faculty")
+            
+        from models import FacultySubjectAssignment
+        assignment = db.query(FacultySubjectAssignment).filter(
+            FacultySubjectAssignment.faculty_id == current_user.id,
+            FacultySubjectAssignment.subject_id == session_data.subject_id,
+            FacultySubjectAssignment.division_id == session_data.division_id
+        ).first()
+        if not assignment:
+            raise HTTPException(status_code=403, detail="Unauthorized for this subject and division")
+    elif current_user.role.name != RoleName.ADMIN:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
     # Validate entities exist
     faculty = db.query(Faculty).filter(Faculty.user_id == session_data.faculty_id).first()
     if not faculty:
         raise HTTPException(status_code=404, detail="Faculty not found")
+        
+    existing_active_session = db.query(AttendanceSession).filter(
+        AttendanceSession.faculty_id == session_data.faculty_id,
+        AttendanceSession.is_active == True
+    ).first()
+    if existing_active_session:
+        raise HTTPException(status_code=409, detail="Faculty already has an active attendance session.")
         
     subject = db.query(Subject).filter(Subject.id == session_data.subject_id).first()
     if not subject:
@@ -41,12 +63,18 @@ def create_session(session_data: AttendanceSessionCreate, db: Session = Depends(
     return new_session
 
 @router.get("/active", response_model=List[dict])
-def list_active_sessions(db: Session = Depends(get_db)):
-    sessions = db.query(AttendanceSession).options(
+def list_active_sessions(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    query = db.query(AttendanceSession).options(
         joinedload(AttendanceSession.faculty),
         joinedload(AttendanceSession.subject),
         joinedload(AttendanceSession.division)
-    ).filter(AttendanceSession.is_active == True).all()
+    ).filter(AttendanceSession.is_active == True)
+    
+    if current_user.role.name == RoleName.FACULTY:
+        scopes = get_faculty_scopes(db, current_user.id)
+        query = query.filter(AttendanceSession.division_id.in_(scopes["divisions"]))
+        
+    sessions = query.all()
     
     result = []
     for s in sessions:
@@ -63,10 +91,14 @@ def list_active_sessions(db: Session = Depends(get_db)):
     return result
 
 @router.post("/{session_id}/end")
-def end_session(session_id: int, db: Session = Depends(get_db)):
+def end_session(session_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     session = db.query(AttendanceSession).filter(AttendanceSession.id == session_id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
+        
+    if current_user.role.name == RoleName.FACULTY:
+        if session.faculty_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Unauthorized to end this session")
         
     session.is_active = False
     session.end_time = datetime.now(timezone.utc)
@@ -75,11 +107,15 @@ def end_session(session_id: int, db: Session = Depends(get_db)):
     return {"success": True, "message": "Session ended"}
 
 @router.get("/{session_id}/qr")
-def get_qr_token(session_id: int, db: Session = Depends(get_db)):
+def get_qr_token(session_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     # Use with_for_update() to prevent race conditions when generating token
     session = db.query(AttendanceSession).with_for_update().filter(AttendanceSession.id == session_id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
+        
+    if current_user.role.name == RoleName.FACULTY:
+        if session.faculty_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Unauthorized to get QR for this session")
         
     if not session.is_active:
         raise HTTPException(status_code=400, detail="Session is not active")
@@ -115,10 +151,15 @@ def get_qr_token(session_id: int, db: Session = Depends(get_db)):
     }
 
 @router.get("/{session_id}/attendance", response_model=LiveAttendanceResponse)
-def get_session_attendance(session_id: int, db: Session = Depends(get_db)):
+def get_session_attendance(session_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     session = db.query(AttendanceSession).filter(AttendanceSession.id == session_id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
+        
+    if current_user.role.name == RoleName.FACULTY:
+        scopes = get_faculty_scopes(db, current_user.id)
+        if session.division_id not in scopes["divisions"]:
+            raise HTTPException(status_code=404, detail="Session not found")
 
     from models import AttendanceRecord
     records = db.query(AttendanceRecord).filter(AttendanceRecord.attendance_session_id == session_id).all()

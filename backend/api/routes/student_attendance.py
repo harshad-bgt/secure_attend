@@ -1,11 +1,12 @@
 import numpy as np
+import math
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 from typing import Dict, Any
 
 from database import get_db
-from models import User, Student, AttendanceSession, AttendanceRecord, FaceTemplate
+from models import User, Student, AttendanceSession, AttendanceRecord, FaceTemplate, CampusSettings
 from schemas import AttendanceMarkRequest, AttendanceSessionResponse
 from dependencies import get_current_user, require_role, RoleName
 from security import verify_attendance_qr_token, create_face_proof_token, verify_face_proof_token
@@ -128,6 +129,16 @@ async def verify_student_face(
         "face_proof_token": face_proof_token
     }
 
+def haversine_distance(lat1, lon1, lat2, lon2):
+    R = 6371000  # Radius of earth in meters
+    phi_1 = math.radians(lat1)
+    phi_2 = math.radians(lat2)
+    delta_phi = math.radians(lat2 - lat1)
+    delta_lambda = math.radians(lon2 - lon1)
+    a = math.sin(delta_phi / 2.0) ** 2 + math.cos(phi_1) * math.cos(phi_2) * math.sin(delta_lambda / 2.0) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return R * c
+
 @router.post("/attendance/mark")
 def mark_attendance(
     request: AttendanceMarkRequest,
@@ -180,7 +191,32 @@ def mark_attendance(
             detail="Attendance already marked for this session."
         )
 
-    # 5. Create Attendance Record
+    # 5. Validate Geofence
+    campus_settings = db.query(CampusSettings).filter(CampusSettings.id == 1).first()
+    if not campus_settings:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Campus geofence configuration is missing. Please contact an Administrator."
+        )
+    
+    if request.latitude < -90 or request.latitude > 90 or request.longitude < -180 or request.longitude > 180:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid GPS coordinates format."
+        )
+
+    distance = haversine_distance(
+        request.latitude, request.longitude,
+        campus_settings.latitude, campus_settings.longitude
+    )
+    
+    if distance > campus_settings.radius_meters:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"You are outside the campus geofence (Distance: {int(distance)} meters). Attendance denied."
+        )
+
+    # 6. Create Attendance Record
     new_record = AttendanceRecord(
         attendance_session_id=session.id,
         student_id=student.user_id,

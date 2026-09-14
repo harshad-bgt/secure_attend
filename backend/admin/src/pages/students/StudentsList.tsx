@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { UserPlus, Search, Eye, ShieldAlert, ShieldCheck, Download } from 'lucide-react';
+import { UserPlus, Search, Eye, ShieldAlert, ShieldCheck, Download, ChevronRight, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import apiClient from '../../api/client';
@@ -13,19 +13,52 @@ import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Ca
 import { Dialog } from '../../components/ui/Dialog';
 import BulkImportDialog from './BulkImportDialog';
 
+type YearKey = 'SE' | 'TE' | 'BE';
+
+const YEAR_SEMESTER_MAP: Record<YearKey, number> = {
+  SE: 1, // Semester 3
+  TE: 3, // Semester 5
+  BE: 5  // Semester 7
+};
+
 export default function StudentsList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
+  
+  const [selectedYear, setSelectedYear] = useState<YearKey | null>(null);
+  const [selectedDivision, setSelectedDivision] = useState<any | null>(null);
+
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { data: students = [], isLoading } = useQuery({
-    queryKey: ['students'],
+  // Fetch admin stats for accurate counts
+  const { data: stats } = useQuery({
+    queryKey: ['adminStats'],
+    queryFn: async () => (await apiClient.get('/admin/stats/')).data
+  });
+
+  // Fetch all divisions to dynamically get division_id when one is selected
+  const { data: divisions = [] } = useQuery({
+    queryKey: ['divisions'],
+    queryFn: async () => (await apiClient.get('/academic/divisions')).data
+  });
+
+  // Fetch students ONLY for selected semester and division
+  const semesterId = selectedYear ? YEAR_SEMESTER_MAP[selectedYear] : null;
+  const divisionId = selectedDivision?.id || null;
+
+  const { data: students = [], isLoading: isLoadingStudents } = useQuery({
+    queryKey: ['students', semesterId, divisionId, searchTerm],
     queryFn: async () => {
-      const { data } = await apiClient.get('/students/');
+      let url = `/students/?limit=1000`;
+      if (semesterId) url += `&semester_id=${semesterId}`;
+      if (divisionId) url += `&division_id=${divisionId}`;
+      if (searchTerm) url += `&search=${encodeURIComponent(searchTerm)}`;
+      const { data } = await apiClient.get(url);
       return data;
-    }
+    },
+    enabled: !!(semesterId && divisionId) // Only fetch when both are selected
   });
 
   const toggleStatusMutation = useMutation({
@@ -39,11 +72,11 @@ export default function StudentsList() {
     onError: () => toast.error('Failed to update status')
   });
 
-  const filteredStudents = students.filter((s: any) => 
-    s.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.roll_number.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Available divisions for selected year
+  const availableDivisions = useMemo(() => {
+    if (!semesterId) return [];
+    return divisions.filter((d: any) => d.semester_id === semesterId);
+  }, [divisions, semesterId]);
 
   return (
     <div className="space-y-6">
@@ -64,80 +97,158 @@ export default function StudentsList() {
         </div>
       </div>
 
-      <Card>
-        <CardHeader className="flex flex-col sm:flex-row justify-between items-center gap-4">
-          <CardTitle>All Students</CardTitle>
-          <div className="relative w-full sm:w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <Input 
-              placeholder="Search by name or roll number..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 h-10"
-            />
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="p-8 text-center text-slate-500 dark:text-slate-400">Loading students...</div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Roll Number</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredStudents.length > 0 ? filteredStudents.map((student: any) => (
-                  <TableRow key={student.user_id}>
-                    <TableCell className="font-medium text-slate-900 dark:text-white">
-                      {student.roll_number}
-                    </TableCell>
-                    <TableCell>{student.first_name} {student.last_name}</TableCell>
-                    <TableCell>{student.email}</TableCell>
-                    <TableCell>
-                      <Badge variant={student.is_active ? 'success' : 'error'}>
-                        {student.is_active ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => navigate(`/students/${student.user_id}`)}
-                          title="View Details"
-                        >
-                          <Eye size={18} />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => toggleStatusMutation.mutate(student.user_id)}
-                          title={student.is_active ? "Deactivate" : "Activate"}
-                          className={student.is_active ? "text-red-500 hover:text-red-600" : "text-green-500 hover:text-green-600"}
-                        >
-                          {student.is_active ? <ShieldAlert size={18} /> : <ShieldCheck size={18} />}
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )) : (
+      {/* Navigation Breadcrumb */}
+      <div className="flex items-center gap-2 text-sm text-slate-500 font-medium">
+        <button 
+          onClick={() => { setSelectedYear(null); setSelectedDivision(null); }}
+          className={`hover:text-blue-600 transition-colors ${!selectedYear ? 'text-blue-600 font-bold' : ''}`}
+        >
+          All Years
+        </button>
+        {selectedYear && (
+          <>
+            <ChevronRight size={16} />
+            <button 
+              onClick={() => setSelectedDivision(null)}
+              className={`hover:text-blue-600 transition-colors ${!selectedDivision ? 'text-blue-600 font-bold' : ''}`}
+            >
+              {selectedYear}
+            </button>
+          </>
+        )}
+        {selectedDivision && (
+          <>
+            <ChevronRight size={16} />
+            <span className="text-blue-600 font-bold">{selectedDivision.name}</span>
+          </>
+        )}
+      </div>
+
+      {/* LEVEL 1: YEAR SELECTION */}
+      {!selectedYear && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {(['SE', 'TE', 'BE'] as YearKey[]).map((year) => (
+            <Card 
+              key={year} 
+              className="cursor-pointer hover:shadow-md transition-all hover:border-blue-300 dark:hover:border-blue-700 group"
+              onClick={() => setSelectedYear(year)}
+            >
+              <CardContent className="p-6 flex flex-col items-center justify-center text-center">
+                <div className="w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Users className="text-blue-600 dark:text-blue-400" size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{year}</h3>
+                <p className="text-slate-500 dark:text-slate-400">
+                  {stats?.grouped_students?.[year]?.total || 0} Students
+                </p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* LEVEL 2: DIVISION SELECTION */}
+      {selectedYear && !selectedDivision && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {availableDivisions.map((div: any) => (
+            <Card 
+              key={div.id} 
+              className="cursor-pointer hover:shadow-md transition-all hover:border-blue-300 dark:hover:border-blue-700 group"
+              onClick={() => setSelectedDivision(div)}
+            >
+              <CardContent className="p-6 flex flex-col items-center justify-center text-center">
+                <div className="w-16 h-16 rounded-full bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Users className="text-indigo-600 dark:text-indigo-400" size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{div.name}</h3>
+                <p className="text-slate-500 dark:text-slate-400">
+                  {stats?.grouped_students?.[selectedYear]?.[div.name] || 0} Students
+                </p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* LEVEL 3: STUDENTS TABLE */}
+      {selectedYear && selectedDivision && (
+        <Card>
+          <CardHeader className="flex flex-col sm:flex-row justify-between items-center gap-4">
+            <CardTitle>{selectedYear} - {selectedDivision.name} Students</CardTitle>
+            <div className="relative w-full sm:w-72">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <Input 
+                placeholder={`Search in ${selectedDivision.name}...`} 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 h-10"
+              />
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            {isLoadingStudents ? (
+              <div className="p-8 text-center text-slate-500 dark:text-slate-400">Loading students...</div>
+            ) : (
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-slate-500 dark:text-slate-400">
-                      No students found matching your search.
-                    </TableCell>
+                    <TableHead>Roll Number</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Department</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                </TableHeader>
+                <TableBody>
+                  {students.length > 0 ? students.map((student: any) => (
+                    <TableRow key={student.user_id}>
+                      <TableCell className="font-medium text-slate-900 dark:text-white">
+                        {student.roll_number}
+                      </TableCell>
+                      <TableCell>{student.first_name} {student.last_name}</TableCell>
+                      <TableCell>{student.email}</TableCell>
+                      <TableCell>{student.department_id || 'N/A'}</TableCell>
+                      <TableCell>
+                        <Badge variant={student.is_active ? 'success' : 'error'}>
+                          {student.is_active ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => navigate(`/students/${student.user_id}`)}
+                            title="View Details"
+                          >
+                            <Eye size={18} />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => toggleStatusMutation.mutate(student.user_id)}
+                            title={student.is_active ? "Deactivate" : "Activate"}
+                            className={student.is_active ? "text-red-500 hover:text-red-600" : "text-green-500 hover:text-green-600"}
+                          >
+                            {student.is_active ? <ShieldAlert size={18} /> : <ShieldCheck size={18} />}
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )) : (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-slate-500 dark:text-slate-400">
+                        No students found matching your search.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <CreateStudentDialog isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} />
       <BulkImportDialog isOpen={isBulkImportOpen} onClose={() => setIsBulkImportOpen(false)} />
@@ -161,6 +272,7 @@ function CreateStudentDialog({ isOpen, onClose }: { isOpen: boolean, onClose: ()
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
+      queryClient.invalidateQueries({ queryKey: ['adminStats'] });
       toast.success('Student created successfully');
       onClose();
       setFormData({ first_name: '', last_name: '', email: '', password: '', roll_number: '' });

@@ -1,4 +1,4 @@
-package com.example.secure_attend
+package ai.secureattend.app
 
 import io.flutter.embedding.android.FlutterActivity
 

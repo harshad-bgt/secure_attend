@@ -6,11 +6,11 @@ from typing import List, Optional
 from pydantic import BaseModel, EmailStr
 
 from database import get_db
-from models import Student, User, Role, RoleName, Department, AuditLog
+from models import Student, User, Role, RoleName, Department, AuditLog, Division, StudentEnrollment
 from security import get_password_hash
-from dependencies import require_role
+from dependencies import require_role, require_admin, require_admin_or_faculty, get_current_user, get_faculty_scopes
 
-router = APIRouter(prefix="/students", tags=["students"], dependencies=[Depends(require_role(RoleName.ADMIN))])
+router = APIRouter(prefix="/students", tags=["students"], dependencies=[Depends(require_admin_or_faculty())])
 
 class StudentCreate(BaseModel):
     email: EmailStr
@@ -28,10 +28,12 @@ class StudentResponse(BaseModel):
     last_name: str
     is_active: bool
     department_id: Optional[int]
+    semester_id: Optional[int] = None
+    division_id: Optional[int] = None
 
     model_config = {"from_attributes": True}
 
-@router.post("/", response_model=StudentResponse)
+@router.post("/", response_model=StudentResponse, dependencies=[Depends(require_admin())])
 def create_student(student: StudentCreate, db: Session = Depends(get_db)):
     if db.query(User).filter(User.email == student.email).first():
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -71,10 +73,52 @@ def create_student(student: StudentCreate, db: Session = Depends(get_db)):
     }
 
 @router.get("/", response_model=List[StudentResponse])
-def list_students(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    students = db.query(Student).join(User).offset(skip).limit(limit).all()
+def list_students(
+    skip: int = 0, 
+    limit: int = 100, 
+    search: Optional[str] = None,
+    semester_id: Optional[int] = None,
+    division_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if semester_id and division_id:
+        div = db.query(Division).filter(Division.id == division_id).first()
+        if not div or div.semester_id != semester_id:
+            raise HTTPException(status_code=400, detail="Invalid semester and division combination")
+
+    query = db.query(Student).join(User)
+    query = query.join(Student.enrollments).filter(StudentEnrollment.is_active == True)
+
+    if current_user.role.name == RoleName.FACULTY:
+        scopes = get_faculty_scopes(db, current_user.id)
+        allowed_divisions = scopes["divisions"]
+        if division_id and division_id not in allowed_divisions:
+            raise HTTPException(status_code=403, detail="Not authorized to access this division")
+        if semester_id and semester_id not in scopes["semesters"]:
+            raise HTTPException(status_code=403, detail="Not authorized to access this semester")
+        
+        # Enforce scoping unconditionally for faculty
+        query = query.filter(StudentEnrollment.division_id.in_(allowed_divisions))
+
+    if semester_id:
+        query = query.filter(StudentEnrollment.semester_id == semester_id)
+    if division_id:
+        query = query.filter(StudentEnrollment.division_id == division_id)
+
+    if search:
+        search_pattern = f"%{search}%"
+        query = query.filter(
+            (Student.first_name.ilike(search_pattern)) |
+            (Student.last_name.ilike(search_pattern)) |
+            (Student.roll_number.ilike(search_pattern)) |
+            (User.email.ilike(search_pattern))
+        )
+
+    students = query.offset(skip).limit(limit).all()
     result = []
     for s in students:
+        active_enrollment = next((e for e in s.enrollments if e.is_active), None)
         result.append({
             "user_id": s.user_id,
             "email": s.user.email,
@@ -82,16 +126,25 @@ def list_students(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
             "first_name": s.first_name,
             "last_name": s.last_name,
             "is_active": s.user.is_active,
-            "department_id": s.department_id
+            "department_id": s.department_id,
+            "semester_id": active_enrollment.semester_id if active_enrollment else None,
+            "division_id": active_enrollment.division_id if active_enrollment else None
         })
     return result
 
 @router.get("/{user_id}", response_model=StudentResponse)
-def get_student(user_id: int, db: Session = Depends(get_db)):
+def get_student(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     student = db.query(Student).filter(Student.user_id == user_id).first()
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
         
+    active_enrollment = next((e for e in student.enrollments if e.is_active), None)
+    
+    if current_user.role.name == RoleName.FACULTY:
+        scopes = get_faculty_scopes(db, current_user.id)
+        allowed_divisions = scopes["divisions"]
+        if not active_enrollment or active_enrollment.division_id not in allowed_divisions:
+            raise HTTPException(status_code=404, detail="Student not found")
     return {
         "user_id": student.user_id,
         "email": student.user.email,
@@ -99,10 +152,12 @@ def get_student(user_id: int, db: Session = Depends(get_db)):
         "first_name": student.first_name,
         "last_name": student.last_name,
         "is_active": student.user.is_active,
-        "department_id": student.department_id
+        "department_id": student.department_id,
+        "semester_id": active_enrollment.semester_id if active_enrollment else None,
+        "division_id": active_enrollment.division_id if active_enrollment else None
     }
 
-@router.post("/{user_id}/toggle-status")
+@router.post("/{user_id}/toggle-status", dependencies=[Depends(require_admin())])
 def toggle_student_status(user_id: int, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user or user.role.name != RoleName.STUDENT:
@@ -137,7 +192,7 @@ def update_student_profile(profile_data: StudentProfileUpdate, current_user: Use
     return {"status": "ok", "message": "Profile updated successfully"}
 
 
-@router.post("/bulk-import")
+@router.post("/bulk-import", dependencies=[Depends(require_admin())])
 def bulk_import_students(file: UploadFile = File(...), db: Session = Depends(get_db)):
     if not file.filename.endswith(".csv"):
         raise HTTPException(status_code=400, detail="Only CSV files are supported")

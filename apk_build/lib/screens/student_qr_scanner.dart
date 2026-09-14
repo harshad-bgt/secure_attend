@@ -1,12 +1,12 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:geolocator/geolocator.dart';
 import '../core/api_client.dart';
+import 'student_face_verification.dart';
 
 class StudentQrScanner extends StatefulWidget {
-  final String faceProofToken;
-  
-  const StudentQrScanner({super.key, required this.faceProofToken});
+  const StudentQrScanner({super.key});
 
   @override
   State<StudentQrScanner> createState() => _StudentQrScannerState();
@@ -17,6 +17,7 @@ class _StudentQrScannerState extends State<StudentQrScanner> {
     formats: const [BarcodeFormat.qrCode],
   );
   bool _isProcessing = false;
+  String _statusMessage = 'Point camera at the session QR code';
 
   @override
   void dispose() {
@@ -31,105 +32,78 @@ class _StudentQrScannerState extends State<StudentQrScanner> {
     if (barcodes.isEmpty || barcodes.first.rawValue == null) return;
     
     final qrData = barcodes.first.rawValue!;
-    setState(() => _isProcessing = true);
+    setState(() {
+      _isProcessing = true;
+      _statusMessage = 'Fetching location...';
+    });
     
     _scannerController.stop();
-    
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        content: Row(
-          children: [
-            CircularProgressIndicator(color: Theme.of(context).colorScheme.secondary),
-            const SizedBox(width: 24),
-            const Expanded(child: Text("Verifying Session...", style: TextStyle(fontWeight: FontWeight.bold))),
-          ],
-        ),
-      )
-    );
 
     try {
-      final response = await ApiClient.post('/student/attendance/mark', body: {
-        'qr_token': qrData,
-        'face_proof_token': widget.faceProofToken,
-      });
+      Position position = await _determinePosition();
+      
+      if (position.isMocked) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: const Text('Mock location detected. Attendance rejected.'), backgroundColor: Theme.of(context).colorScheme.error),
+        );
+        setState(() {
+          _isProcessing = false;
+          _statusMessage = 'Location rejected. Try again.';
+        });
+        _scannerController.start();
+        return;
+      }
       
       if (!mounted) return;
-      Navigator.pop(context); // Close loading
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        _showSuccessDialog(data);
-      } else {
-        String err = "Verification failed. Session QR may be expired.";
-        try { err = jsonDecode(response.body)['detail'] ?? err; } catch (_) {}
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(err), backgroundColor: Theme.of(context).colorScheme.error),
-        );
-        setState(() => _isProcessing = false);
-        _scannerController.start();
-      }
+      
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => StudentFaceVerification(
+            qrToken: qrData,
+            latitude: position.latitude,
+            longitude: position.longitude,
+          ),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
-      Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: const Text('Network error while verifying session.'), backgroundColor: Theme.of(context).colorScheme.error),
+        SnackBar(content: Text(e.toString()), backgroundColor: Theme.of(context).colorScheme.error),
       );
-      setState(() => _isProcessing = false);
+      setState(() {
+        _isProcessing = false;
+        _statusMessage = 'Location failed. Scan again.';
+      });
       _scannerController.start();
     }
   }
 
-  void _showSuccessDialog(Map<String, dynamic> data) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Attendance Recorded', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.check_circle, color: Colors.green, size: 80),
-            const SizedBox(height: 24),
-            _buildChecklistItem('Identity Verified'),
-            const SizedBox(height: 8),
-            _buildChecklistItem('Session Verified'),
-            const SizedBox(height: 8),
-            _buildChecklistItem('Attendance Recorded'),
-            const SizedBox(height: 24),
-            Text(
-              '${data["subject_name"]} • ${data["faculty_name"]}',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.w500),
-            ),
-          ],
-        ),
-        actions: [
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.secondary),
-              onPressed: () {
-                Navigator.pop(ctx);
-                Navigator.pop(context); // Go back to dashboard
-              }, 
-              child: const Text('Return to Dashboard')
-            ),
-          )
-        ],
-      )
-    );
-  }
+  Future<Position> _determinePosition() async {
+    bool serviceEnabled;
+    LocationPermission permission;
 
-  Widget _buildChecklistItem(String text) {
-    return Row(
-      children: [
-        const Icon(Icons.check, color: Colors.green, size: 20),
-        const SizedBox(width: 8),
-        Text(text, style: const TextStyle(fontWeight: FontWeight.bold)),
-      ],
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      return Future.error('Location services are disabled.');
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        return Future.error('Location permissions are denied');
+      }
+    }
+    
+    if (permission == LocationPermission.deniedForever) {
+      return Future.error('Location permissions are permanently denied, we cannot request permissions.');
+    } 
+
+    return await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+      timeLimit: const Duration(seconds: 15)
     );
   }
 
@@ -140,9 +114,9 @@ class _StudentQrScannerState extends State<StudentQrScanner> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _buildStep(1, 'Identity', true, isCompleted: true),
-          _buildLine(true),
-          _buildStep(2, 'Session', true),
+          _buildStep(1, 'Session', true),
+          _buildLine(false),
+          _buildStep(2, 'Identity', false),
           _buildLine(false),
           _buildStep(3, 'Done', false),
         ],
@@ -221,10 +195,19 @@ class _StudentQrScannerState extends State<StudentQrScanner> {
                         color: Theme.of(context).colorScheme.primary.withOpacity(0.85),
                         borderRadius: BorderRadius.circular(24),
                       ),
-                      child: const Text(
-                        'Point camera at the session QR code',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
+                      child: _isProcessing 
+                        ? Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)),
+                              const SizedBox(width: 12),
+                              Text(_statusMessage, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))
+                            ]
+                          )
+                        : Text(
+                            _statusMessage,
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
                     ),
                   ),
                 ),

@@ -79,6 +79,7 @@ class Semester(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     academic_year_id: Mapped[int] = mapped_column(ForeignKey("academic_years.id"))
     name: Mapped[str] = mapped_column(String(50)) # e.g. "Fall 2026"
+    number: Mapped[Optional[int]] = mapped_column(Integer) # e.g. 3, 4, 5
     is_active: Mapped[bool] = mapped_column(Boolean, default=False)
     
     academic_year: Mapped["AcademicYear"] = relationship(back_populates="semesters")
@@ -88,18 +89,31 @@ class Semester(Base):
 class Division(Base):
     __tablename__ = "divisions"
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(10), unique=True) # e.g. "A", "B"
+    name: Mapped[str] = mapped_column(String(10)) # e.g. "A", "B"
+    semester_id: Mapped[Optional[int]] = mapped_column(ForeignKey("semesters.id"))
+    department_id: Mapped[Optional[int]] = mapped_column(ForeignKey("departments.id"))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     
+    semester: Mapped[Optional["Semester"]] = relationship()
+    department: Mapped[Optional["Department"]] = relationship()
     enrollments: Mapped[List["StudentEnrollment"]] = relationship(back_populates="division")
     faculty_assignments: Mapped[List["FacultySubjectAssignment"]] = relationship(back_populates="division")
+
+    __table_args__ = (
+        UniqueConstraint('name', 'semester_id', 'department_id', name='uix_division_name_sem_dept'),
+    )
 
 class Subject(Base):
     __tablename__ = "subjects"
     id: Mapped[int] = mapped_column(primary_key=True)
-    code: Mapped[str] = mapped_column(String(50), unique=True, index=True)
+    code: Mapped[Optional[str]] = mapped_column(String(50), unique=True, index=True, nullable=True)
     name: Mapped[str] = mapped_column(String(150))
     department_id: Mapped[int] = mapped_column(ForeignKey("departments.id"))
+    semester_id: Mapped[Optional[int]] = mapped_column(ForeignKey("semesters.id"))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    subject_type: Mapped[Optional[str]] = mapped_column(String(50))
     
+    semester: Mapped[Optional["Semester"]] = relationship()
     department: Mapped["Department"] = relationship(back_populates="subjects")
     faculty_assignments: Mapped[List["FacultySubjectAssignment"]] = relationship(back_populates="subject")
 
@@ -175,6 +189,10 @@ class FacultySubjectAssignment(Base):
     subject: Mapped["Subject"] = relationship(back_populates="faculty_assignments")
     semester: Mapped["Semester"] = relationship(back_populates="faculty_assignments")
     division: Mapped[Optional["Division"]] = relationship(back_populates="faculty_assignments")
+
+    __table_args__ = (
+        UniqueConstraint('faculty_id', 'subject_id', 'division_id', name='uix_faculty_subject_division'),
+    )
 
 class RefreshToken(Base):
     __tablename__ = "refresh_tokens"
@@ -377,3 +395,12 @@ class Notice(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
     
     sender: Mapped["User"] = relationship()
+
+class CampusSettings(Base):
+    __tablename__ = "campus_settings"
+    
+    id: Mapped[int] = mapped_column(primary_key=True, index=True) # Will strictly be 1 for singleton
+    latitude: Mapped[float] = mapped_column(Float, nullable=False)
+    longitude: Mapped[float] = mapped_column(Float, nullable=False)
+    radius_meters: Mapped[float] = mapped_column(Float, nullable=False, default=200.0)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

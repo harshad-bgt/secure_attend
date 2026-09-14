@@ -2,10 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'dart:convert';
 import '../core/api_client.dart';
-import 'student_qr_scanner.dart';
 
 class StudentFaceVerification extends StatefulWidget {
-  const StudentFaceVerification({super.key});
+  final String qrToken;
+  final double latitude;
+  final double longitude;
+  
+  const StudentFaceVerification({
+    super.key, 
+    required this.qrToken,
+    required this.latitude,
+    required this.longitude,
+  });
 
   @override
   State<StudentFaceVerification> createState() => _StudentFaceVerificationState();
@@ -89,20 +97,30 @@ class _StudentFaceVerificationState extends State<StudentFaceVerification> {
         final data = jsonDecode(response.body);
         final proofToken = data['face_proof_token'];
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Identity verified successfully!'), backgroundColor: Colors.green),
-        );
+        // Face is verified, now submit attendance
+        final markResponse = await ApiClient.post('/student/attendance/mark', body: {
+          'qr_token': widget.qrToken,
+          'face_proof_token': proofToken,
+          'latitude': widget.latitude,
+          'longitude': widget.longitude,
+        });
         
-        if (_controller != null) {
-          await _controller!.dispose();
-          _controller = null;
-        }
-
         if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => StudentQrScanner(faceProofToken: proofToken)),
-        );
+
+        if (markResponse.statusCode == 200) {
+          final markData = jsonDecode(markResponse.body);
+          if (_controller != null) {
+            await _controller!.dispose();
+            _controller = null;
+          }
+          _showSuccessDialog(markData);
+        } else {
+          String err = "Attendance failed. Session QR may be expired.";
+          try { err = jsonDecode(markResponse.body)['detail'] ?? err; } catch (_) {}
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(err), backgroundColor: Theme.of(context).colorScheme.error),
+          );
+        }
       } else {
         String err = "Verification failed. Please try again.";
         try { err = jsonDecode(response.body)['detail'] ?? err; } catch (_) {}
@@ -121,6 +139,58 @@ class _StudentFaceVerificationState extends State<StudentFaceVerification> {
     }
   }
 
+  void _showSuccessDialog(Map<String, dynamic> data) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Attendance Recorded', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.check_circle, color: Colors.green, size: 80),
+            const SizedBox(height: 24),
+            _buildChecklistItem('Identity Verified'),
+            const SizedBox(height: 8),
+            _buildChecklistItem('Session Verified'),
+            const SizedBox(height: 8),
+            _buildChecklistItem('Attendance Recorded'),
+            const SizedBox(height: 24),
+            Text(
+              '${data["subject_name"]} • ${data["faculty_name"]}',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.secondary),
+              onPressed: () {
+                Navigator.pop(ctx);
+                Navigator.pop(context); // Go back to dashboard
+              }, 
+              child: const Text('Return to Dashboard')
+            ),
+          )
+        ],
+      )
+    );
+  }
+
+  Widget _buildChecklistItem(String text) {
+    return Row(
+      children: [
+        const Icon(Icons.check, color: Colors.green, size: 20),
+        const SizedBox(width: 8),
+        Text(text, style: const TextStyle(fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
+
   Widget _buildStepper() {
     return Container(
       color: Theme.of(context).colorScheme.surface,
@@ -128,9 +198,9 @@ class _StudentFaceVerificationState extends State<StudentFaceVerification> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _buildStep(1, 'Identity', true),
-          _buildLine(false),
-          _buildStep(2, 'Session', false),
+          _buildStep(1, 'Session', true, isCompleted: true),
+          _buildLine(true),
+          _buildStep(2, 'Identity', true),
           _buildLine(false),
           _buildStep(3, 'Done', false),
         ],
@@ -138,7 +208,7 @@ class _StudentFaceVerificationState extends State<StudentFaceVerification> {
     );
   }
 
-  Widget _buildStep(int step, String label, bool isActive) {
+  Widget _buildStep(int step, String label, bool isActive, {bool isCompleted = false}) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -150,13 +220,15 @@ class _StudentFaceVerificationState extends State<StudentFaceVerification> {
             shape: BoxShape.circle,
           ),
           child: Center(
-            child: Text(
-              '$step',
-              style: TextStyle(
-                color: isActive ? Colors.white : Colors.grey.shade600,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            child: isCompleted 
+                ? const Icon(Icons.check, color: Colors.white, size: 18)
+                : Text(
+                    '$step',
+                    style: TextStyle(
+                      color: isActive ? Colors.white : Colors.grey.shade600,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
           ),
         ),
         const SizedBox(height: 4),

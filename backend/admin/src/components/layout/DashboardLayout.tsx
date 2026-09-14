@@ -1,5 +1,5 @@
 import { Outlet, NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, UserSquare2, LogOut, Bell, ShieldCheck, Sun, Moon, BookOpen, QrCode, Calendar, Megaphone, FileText, Settings, ShieldAlert } from 'lucide-react';
+import { LayoutDashboard, Users, UserSquare2, LogOut, Bell, ShieldCheck, Sun, Moon, BookOpen, QrCode, Calendar, FileText, Settings } from 'lucide-react';
 import { useTheme } from '../ThemeProvider';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -39,18 +39,13 @@ export default function DashboardLayout() {
         {/* Navigation */}
         <div className="flex-1 overflow-y-auto py-6 px-4 flex flex-col gap-1">
           <NavItem to="/" icon={<LayoutDashboard size={20} />} label="Dashboard" />
-          <NavItem to="/academic" icon={<BookOpen size={20} />} label="Academic Core" />
-          <NavItem to="/faculty" icon={<UserSquare2 size={20} />} label="Faculty Directory" />
-          <NavItem to="/students" icon={<Users size={20} />} label="Student Hub" />
-          <NavItem to="/attendance" icon={<QrCode size={20} />} label="Attendance Portal" />
-          
-          <div className="mt-4 mb-2 px-4 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">ERP Features</div>
-          <NavItem to="/erp/timetable" icon={<Calendar size={20} />} label="Timetable" />
-          <NavItem to="/erp/notices" icon={<Megaphone size={20} />} label="Notices" />
-          
-          <div className="mt-4 mb-2 px-4 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">System</div>
+          <NavItem to="/students" icon={<Users size={20} />} label="Students" />
+          <NavItem to="/faculty" icon={<UserSquare2 size={20} />} label="Faculty" />
+          <NavItem to="/subjects" icon={<BookOpen size={20} />} label="Subjects" />
+          <NavItem to="/divisions" icon={<Users size={20} />} label="Divisions" />
+          <NavItem to="/attendance" icon={<Calendar size={20} />} label="Attendance Sessions" />
+          <NavItem to="/live-session" icon={<QrCode size={20} />} label="Live Session / QR" />
           <NavItem to="/reports" icon={<FileText size={20} />} label="Reports" />
-          <NavItem to="/audit-logs" icon={<ShieldAlert size={20} />} label="Audit Logs" />
           <NavItem to="/settings" icon={<Settings size={20} />} label="Settings" />
         </div>
         

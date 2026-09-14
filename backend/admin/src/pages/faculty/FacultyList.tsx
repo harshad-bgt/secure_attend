@@ -79,6 +79,7 @@ export default function FacultyList() {
                   <TableHead>Employee ID</TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
+                  <TableHead>Department</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -91,6 +92,7 @@ export default function FacultyList() {
                     </TableCell>
                     <TableCell>{faculty.first_name} {faculty.last_name}</TableCell>
                     <TableCell>{faculty.email}</TableCell>
+                    <TableCell>{faculty.department_id || 'N/A'}</TableCell>
                     <TableCell>
                       <Badge variant={faculty.is_active ? 'success' : 'error'}>
                         {faculty.is_active ? 'Active' : 'Inactive'}
@@ -120,7 +122,7 @@ export default function FacultyList() {
                   </TableRow>
                 )) : (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-slate-500 dark:text-slate-400">
+                    <TableCell colSpan={6} className="text-center py-8 text-slate-500 dark:text-slate-400">
                       No faculty found matching your search.
                     </TableCell>
                   </TableRow>

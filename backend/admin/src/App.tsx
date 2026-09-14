@@ -7,22 +7,46 @@ import StudentsList from './pages/students/StudentsList';
 import StudentDetails from './pages/students/StudentDetails';
 import FacultyList from './pages/faculty/FacultyList';
 import FacultyDetails from './pages/faculty/FacultyDetails';
-import AcademicOverview from './pages/academic/AcademicOverview';
+import Subjects from './pages/academic/Subjects';
+import Divisions from './pages/academic/Divisions';
 import AttendanceSessions from './pages/attendance/AttendanceSessions';
-import TimetableManagement from './pages/erp/TimetableManagement';
-import NoticesManagement from './pages/erp/NoticesManagement';
-import MissingFeatures from './pages/MissingFeatures';
+import LiveSessionPage from './pages/attendance/LiveSessionPage';
+import Reports from './pages/Reports';
+import Settings from './pages/Settings';
+
+import FacultyLayout from './components/layout/FacultyLayout';
+import FacultyDashboard from './pages/faculty-panel/FacultyDashboard';
+import MySubjects from './pages/faculty-panel/MySubjects';
+import MyStudents from './pages/faculty-panel/MyStudents';
+import FacultyStudentDetails from './pages/faculty-panel/FacultyStudentDetails';
+import MyProfile from './pages/faculty-panel/MyProfile';
+import FacultyLiveSessionPage from './pages/faculty-panel/FacultyLiveSessionPage';
 
 import { ThemeProvider } from './components/ThemeProvider';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 const queryClient = new QueryClient();
 
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, isLoading, user } = useAuth();
   
   if (isLoading) return <div className="flex h-screen items-center justify-center dark:bg-slate-900 dark:text-white">Loading...</div>;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
+  
+  if (user?.role === 'FACULTY') return <Navigate to="/faculty-panel" replace />;
+  if (user?.role !== 'ADMIN') return <Navigate to="/login?error=unauthorized" replace />;
+  
+  return <>{children}</>;
+};
+
+const FacultyRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, isLoading, user } = useAuth();
+  
+  if (isLoading) return <div className="flex h-screen items-center justify-center dark:bg-slate-900 dark:text-white">Loading...</div>;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  
+  if (user?.role === 'ADMIN') return <Navigate to="/" replace />;
+  if (user?.role !== 'FACULTY') return <Navigate to="/login?error=unauthorized" replace />;
   
   return <>{children}</>;
 };
@@ -36,7 +60,7 @@ function App() {
             <Routes>
             <Route path="/login" element={<Login />} />
           
-          <Route path="/" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+          <Route path="/" element={<AdminRoute><DashboardLayout /></AdminRoute>}>
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             
@@ -46,16 +70,22 @@ function App() {
             <Route path="faculty" element={<FacultyList />} />
             <Route path="faculty/:id" element={<FacultyDetails />} />
             
-            <Route path="academic" element={<AcademicOverview />} />
-            
-            <Route path="erp/timetable" element={<TimetableManagement />} />
-            <Route path="erp/notices" element={<NoticesManagement />} />
-            
-            <Route path="reports" element={<MissingFeatures />} />
-            <Route path="settings" element={<MissingFeatures />} />
-            <Route path="audit-logs" element={<MissingFeatures />} />
-            
+            <Route path="subjects" element={<Subjects />} />
+            <Route path="divisions" element={<Divisions />} />
             <Route path="attendance" element={<AttendanceSessions />} />
+            <Route path="live-session" element={<LiveSessionPage />} />
+            <Route path="reports" element={<Reports />} />
+            <Route path="settings" element={<Settings />} />
+          </Route>
+          
+          <Route path="/faculty-panel" element={<FacultyRoute><FacultyLayout /></FacultyRoute>}>
+            <Route index element={<Navigate to="/faculty-panel/dashboard" replace />} />
+            <Route path="dashboard" element={<FacultyDashboard />} />
+            <Route path="subjects" element={<MySubjects />} />
+            <Route path="students" element={<MyStudents />} />
+            <Route path="students/:id" element={<FacultyStudentDetails />} />
+            <Route path="profile" element={<MyProfile />} />
+            <Route path="live-session" element={<FacultyLiveSessionPage />} />
           </Route>
           
           <Route path="*" element={<div className="flex h-screen items-center justify-center dark:bg-slate-900 dark:text-white">404 - Not Found</div>} />

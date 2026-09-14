@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from config import get_settings
 from database import get_db, Base, engine
-from routes import auth, students, faculty, academic, face_enrollment, attendance, student_attendance, erp
+from routes import auth, students, faculty, academic, face_enrollment, attendance, student_attendance, erp, admin_stats, admin_settings
 
 settings = get_settings()
 
@@ -36,6 +36,8 @@ api_router.include_router(face_enrollment.router)
 api_router.include_router(attendance.router, prefix="/admin")
 api_router.include_router(student_attendance.router)
 api_router.include_router(erp.router)
+api_router.include_router(admin_stats.router, prefix="/admin")
+api_router.include_router(admin_settings.router, prefix="/admin")
 app.include_router(api_router)
 
 @app.exception_handler(Exception)

@@ -141,7 +141,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                           } else {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (_) => const StudentFaceVerification()),
+                              MaterialPageRoute(builder: (_) => const StudentQrScanner()),
                             );
                           }
                         },
