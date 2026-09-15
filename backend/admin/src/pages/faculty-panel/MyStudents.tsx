@@ -14,18 +14,18 @@ import { useAuth } from '../../contexts/AuthContext';
 type YearKey = 'SE' | 'TE' | 'BE';
 
 const SEMESTER_YEAR_MAP: Record<number, YearKey> = {
-  3: 'SE',
-  4: 'SE',
-  5: 'TE',
-  6: 'TE',
-  7: 'BE',
-  8: 'BE'
+  1: 'SE', // Semester 3 (id=1)
+  2: 'SE', // Semester 4 (id=2)
+  3: 'TE', // Semester 5 (id=3)
+  4: 'TE', // Semester 6 (id=4)
+  5: 'BE', // Semester 7 (id=5)
+  6: 'BE'  // Semester 8 (id=6)
 };
 
 const YEAR_SEMESTER_MAP: Record<YearKey, number> = {
-  SE: 3, // Semester 3
-  TE: 5, // Semester 5
-  BE: 7  // Semester 7
+  SE: 1, // Semester 3
+  TE: 3, // Semester 5
+  BE: 5  // Semester 7
 };
 
 export default function MyStudents() {
@@ -77,8 +77,8 @@ export default function MyStudents() {
   }, [assignments]);
 
   // Fetch students ONLY for selected semester and division
-  const semesterId = selectedYear ? YEAR_SEMESTER_MAP[selectedYear] : null;
   const divisionId = selectedDivision?.id || null;
+  const semesterId = selectedDivision?.semester_id || (selectedYear ? YEAR_SEMESTER_MAP[selectedYear] : null);
 
   const { data: students = [], isLoading: isLoadingStudents } = useQuery({
     queryKey: ['students', semesterId, divisionId, searchTerm],

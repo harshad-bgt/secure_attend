@@ -5,7 +5,7 @@ import json
 
 from database import get_db
 from models import User, Student, FaceTemplate, RoleName
-from dependencies import require_role
+from dependencies import require_role, require_admin_or_faculty, get_faculty_scopes
 from services.face_service import face_service, FaceProcessingError
 
 router = APIRouter(prefix="/students", tags=["Face Enrollment"])
@@ -14,11 +14,17 @@ router = APIRouter(prefix="/students", tags=["Face Enrollment"])
 def get_face_enrollment_status(
     student_id: int, 
     db: Session = Depends(get_db),
-    current_admin: User = Depends(require_role(RoleName.ADMIN))
+    current_user: User = Depends(require_admin_or_faculty())
 ):
     student = db.query(Student).filter(Student.user_id == student_id).first()
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
+
+    if current_user.role.name == RoleName.FACULTY:
+        scopes = get_faculty_scopes(db, current_user.id)
+        active_enrollment = next((e for e in student.enrollments if e.is_active), None)
+        if not active_enrollment or active_enrollment.division_id not in scopes["divisions"]:
+            raise HTTPException(status_code=403, detail="Not authorized to access this student")
 
     template = db.query(FaceTemplate).filter(
         FaceTemplate.student_id == student_id,
