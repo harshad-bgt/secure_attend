@@ -33,8 +33,7 @@ async def enroll_own_face(
         embedding, metadata = face_service.detect_and_get_embedding(image_bytes)
     except Exception as e:
         msg = getattr(e, 'detail', str(e))
-        with open("face_debug.log", "a") as f:
-            f.write(f"Enroll Processing Error: {msg}\n")
+        print(f"Enroll Processing Error: {msg}")
         raise HTTPException(status_code=400, detail=msg)
 
     raw_embedding_bytes = embedding.tobytes()
@@ -96,8 +95,7 @@ async def verify_student_face(
         image_bytes = await file.read()
         captured_embedding, _ = face_service.detect_and_get_embedding(image_bytes)
     except Exception as e:
-        with open("face_debug.log", "a") as f:
-            f.write(f"Error during face detection: {str(e)}\n")
+        print(f"Error during face detection: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
@@ -107,8 +105,7 @@ async def verify_student_face(
     try:
         is_match = face_service.compare_faces(enrolled_embedding, captured_embedding, threshold=0.40) # Lowered threshold slightly just in case
         
-        with open("face_debug.log", "a") as f:
-            f.write(f"Match: {is_match}, Similarity: {np.dot(enrolled_embedding, captured_embedding)}\n")
+        print(f"Match: {is_match}, Similarity: {np.dot(enrolled_embedding, captured_embedding)}")
             
         if not is_match:
             raise HTTPException(
@@ -116,8 +113,7 @@ async def verify_student_face(
                 detail=f"Face verification failed. Similarity: {np.dot(enrolled_embedding, captured_embedding):.2f}"
             )
     except Exception as e:
-        with open("face_debug.log", "a") as f:
-            f.write(f"Error during comparison: {str(e)}\n")
+        print(f"Error during comparison: {str(e)}")
         raise
 
     # 4. Generate Face Proof Token

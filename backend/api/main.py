@@ -42,8 +42,7 @@ app.include_router(api_router)
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    with open("face_debug.log", "a") as f:
-        f.write(f"Global Exception: {str(exc)}\n")
+    print(f"Global Exception: {str(exc)}")
     return JSONResponse(
         status_code=500,
         content={"error": {"code": "system/internal-error", "message": str(exc)}}
@@ -52,8 +51,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 from fastapi.exceptions import RequestValidationError
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    with open("face_debug.log", "a") as f:
-        f.write(f"Validation Error 422: {str(exc)}\n")
+    print(f"Validation Error 422: {str(exc)}")
     return JSONResponse(
         status_code=422,
         content={"detail": exc.errors(), "body": exc.body},
