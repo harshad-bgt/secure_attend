@@ -87,8 +87,7 @@ class _StudentFaceEnrollmentState extends State<StudentFaceEnrollment> {
       if (!mounted) return;
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        
+                
         
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Face enrolled successfully!'), backgroundColor: Colors.green),

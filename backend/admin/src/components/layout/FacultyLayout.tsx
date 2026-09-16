@@ -1,5 +1,5 @@
 import { Outlet, NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, UserSquare2, LogOut, Bell, ShieldCheck, Sun, Moon, BookOpen } from 'lucide-react';
+import { LayoutDashboard, Users, UserSquare2, LogOut, Bell, ShieldCheck, Sun, Moon, BookOpen, FileText } from 'lucide-react';
 import { useTheme } from '../ThemeProvider';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -41,6 +41,7 @@ export default function FacultyLayout() {
           <NavItem to="/faculty-panel/dashboard" icon={<LayoutDashboard size={20} />} label="Dashboard" />
           <NavItem to="/faculty-panel/subjects" icon={<BookOpen size={20} />} label="My Subjects" />
           <NavItem to="/faculty-panel/students" icon={<Users size={20} />} label="My Students" />
+          <NavItem to="/faculty-panel/reports" icon={<FileText size={20} />} label="Reports" />
           <NavItem to="/faculty-panel/profile" icon={<UserSquare2 size={20} />} label="My Profile" />
         </div>
         

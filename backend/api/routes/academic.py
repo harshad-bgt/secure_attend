@@ -39,6 +39,14 @@ class DivisionResponse(BaseModel):
     is_active: bool = True
     model_config = {"from_attributes": True}
 
+class SemesterResponse(BaseModel):
+    id: int
+    academic_year_id: int
+    name: str
+    number: Optional[int] = None
+    is_active: bool = True
+    model_config = {"from_attributes": True}
+
 # Endpoints
 @router.post("/departments", response_model=DepartmentResponse)
 def create_department(dept: DepartmentCreate, db: Session = Depends(get_db)):
@@ -79,3 +87,7 @@ def list_divisions(db: Session = Depends(get_db), current_user: User = Depends(g
         scopes = get_faculty_scopes(db, current_user.id)
         query = query.filter(Division.id.in_(scopes["divisions"]))
     return query.all()
+
+@router.get("/semesters", response_model=List[SemesterResponse])
+def list_semesters(db: Session = Depends(get_db)):
+    return db.query(Semester).all()

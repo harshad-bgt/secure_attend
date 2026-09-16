@@ -21,6 +21,7 @@ import MyStudents from './pages/faculty-panel/MyStudents';
 import FacultyStudentDetails from './pages/faculty-panel/FacultyStudentDetails';
 import MyProfile from './pages/faculty-panel/MyProfile';
 import FacultyLiveSessionPage from './pages/faculty-panel/FacultyLiveSessionPage';
+import FacultyReports from './pages/faculty-panel/FacultyReports';
 
 import { ThemeProvider } from './components/ThemeProvider';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -84,6 +85,7 @@ function App() {
             <Route path="subjects" element={<MySubjects />} />
             <Route path="students" element={<MyStudents />} />
             <Route path="students/:id" element={<FacultyStudentDetails />} />
+            <Route path="reports" element={<FacultyReports />} />
             <Route path="profile" element={<MyProfile />} />
             <Route path="live-session" element={<FacultyLiveSessionPage />} />
           </Route>

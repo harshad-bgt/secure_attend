@@ -285,7 +285,7 @@ class _StudentFaceVerificationState extends State<StudentFaceVerification> {
                           width: 250,
                           height: 350,
                           decoration: BoxDecoration(
-                            border: Border.all(color: Colors.white.withOpacity(0.5), width: 3),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 3),
                             borderRadius: BorderRadius.circular(150),
                           ),
                         ),

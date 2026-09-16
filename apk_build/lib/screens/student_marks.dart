@@ -95,8 +95,8 @@ class _StudentMarksScreenState extends State<StudentMarksScreen> {
           child: ListTile(
             leading: CircleAvatar(
               backgroundColor: percentage >= 40 
-                  ? Colors.green.withOpacity(0.2) 
-                  : Colors.red.withOpacity(0.2),
+                  ? Colors.green.withValues(alpha: 0.2) 
+                  : Colors.red.withValues(alpha: 0.2),
               foregroundColor: percentage >= 40 ? Colors.green : Colors.red,
               child: const Icon(Icons.assessment),
             ),

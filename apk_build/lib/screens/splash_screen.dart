@@ -85,7 +85,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
               const SizedBox(height: 8),
               // Subtitle
               Text(
-                'Department Management System',
+                'Smart Attendance System',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,

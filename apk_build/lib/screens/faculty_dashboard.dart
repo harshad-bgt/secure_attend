@@ -4,6 +4,8 @@ import 'faculty/faculty_subjects_tab.dart';
 import 'faculty/faculty_students_tab.dart';
 import 'faculty/faculty_profile_tab.dart';
 
+import 'faculty/faculty_reports_tab.dart';
+
 class FacultyDashboard extends StatefulWidget {
   const FacultyDashboard({super.key});
 
@@ -18,6 +20,7 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
     const FacultyHomeTab(),
     const FacultySubjectsTab(),
     const FacultyStudentsTab(),
+    const FacultyReportsTab(),
     const FacultyProfileTab(),
   ];
 
@@ -47,6 +50,10 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
           BottomNavigationBarItem(
             icon: Icon(Icons.people),
             label: 'Students',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.insert_chart),
+            label: 'Reports',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person),

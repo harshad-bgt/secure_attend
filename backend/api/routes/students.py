@@ -19,6 +19,8 @@ class StudentCreate(BaseModel):
     first_name: str
     last_name: str
     department_id: Optional[int] = None
+    semester_id: Optional[int] = None
+    division_id: Optional[int] = None
 
 class StudentResponse(BaseModel):
     user_id: int
@@ -59,6 +61,16 @@ def create_student(student: StudentCreate, db: Session = Depends(get_db)):
         department_id=student.department_id
     )
     db.add(new_student)
+    
+    if student.semester_id and student.division_id:
+        new_enrollment = StudentEnrollment(
+            student_id=new_user.id,
+            semester_id=student.semester_id,
+            division_id=student.division_id,
+            is_active=True
+        )
+        db.add(new_enrollment)
+        
     db.add(AuditLog(action="CREATE_STUDENT", target_resource="students", target_id=str(new_user.id)))
     db.commit()
     
@@ -69,7 +81,9 @@ def create_student(student: StudentCreate, db: Session = Depends(get_db)):
         "first_name": new_student.first_name,
         "last_name": new_student.last_name,
         "is_active": new_user.is_active,
-        "department_id": new_student.department_id
+        "department_id": new_student.department_id,
+        "semester_id": student.semester_id,
+        "division_id": student.division_id
     }
 
 @router.get("/", response_model=List[StudentResponse])

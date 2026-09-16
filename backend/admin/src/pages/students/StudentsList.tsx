@@ -250,21 +250,37 @@ export default function StudentsList() {
         </Card>
       )}
 
-      <CreateStudentDialog isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} />
+      <CreateStudentDialog isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} divisions={divisions} />
       <BulkImportDialog isOpen={isBulkImportOpen} onClose={() => setIsBulkImportOpen(false)} />
     </div>
   );
 }
 
-function CreateStudentDialog({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
+function CreateStudentDialog({ isOpen, onClose, divisions }: { isOpen: boolean, onClose: () => void, divisions: any[] }) {
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
     email: '',
     password: '',
-    roll_number: ''
+    roll_number: '',
+    semester_id: 1, // Default to SE
+    division_id: 0
   });
+
+  // Filter divisions based on selected semester
+  const availableDivs = useMemo(() => {
+    return divisions.filter(d => d.semester_id === formData.semester_id);
+  }, [divisions, formData.semester_id]);
+
+  // Set default division when semester changes
+  useMemo(() => {
+    if (availableDivs.length > 0 && formData.division_id === 0) {
+      setFormData(prev => ({ ...prev, division_id: availableDivs[0].id }));
+    } else if (availableDivs.length > 0 && !availableDivs.find(d => d.id === formData.division_id)) {
+      setFormData(prev => ({ ...prev, division_id: availableDivs[0].id }));
+    }
+  }, [availableDivs, formData.division_id]);
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
@@ -275,7 +291,7 @@ function CreateStudentDialog({ isOpen, onClose }: { isOpen: boolean, onClose: ()
       queryClient.invalidateQueries({ queryKey: ['adminStats'] });
       toast.success('Student created successfully');
       onClose();
-      setFormData({ first_name: '', last_name: '', email: '', password: '', roll_number: '' });
+      setFormData({ first_name: '', last_name: '', email: '', password: '', roll_number: '', semester_id: 1, division_id: 0 });
     },
     onError: (err: any) => {
       toast.error(err.response?.data?.detail || 'Failed to create student');
@@ -303,6 +319,34 @@ function CreateStudentDialog({ isOpen, onClose }: { isOpen: boolean, onClose: ()
             value={formData.last_name}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, last_name: e.target.value})}
           />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Year</label>
+            <select 
+              className="w-full h-10 px-3 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+              value={formData.semester_id}
+              onChange={(e) => setFormData({...formData, semester_id: parseInt(e.target.value)})}
+            >
+              <option value={1}>Second Year (SE)</option>
+              <option value={3}>Third Year (TE)</option>
+              <option value={5}>Final Year (BE)</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Division</label>
+            <select 
+              className="w-full h-10 px-3 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+              value={formData.division_id}
+              onChange={(e) => setFormData({...formData, division_id: parseInt(e.target.value)})}
+              required
+            >
+              <option value={0} disabled>Select Division</option>
+              {availableDivs.map(d => (
+                <option key={d.id} value={d.id}>{d.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
         <Input 
           label="Roll Number" 

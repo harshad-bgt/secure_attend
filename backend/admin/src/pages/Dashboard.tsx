@@ -1,7 +1,7 @@
 import { useAuth } from '../contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Users, BookOpen, BarChart3, ShieldCheck, UserSquare2, Building2, QrCode, ArrowRight, Play } from 'lucide-react';
+import { Users, BookOpen, BarChart3, ShieldCheck, UserSquare2, QrCode, ArrowRight, Play } from 'lucide-react';
 import apiClient from '../api/client';
 import { Button } from '../components/ui/Button';
 

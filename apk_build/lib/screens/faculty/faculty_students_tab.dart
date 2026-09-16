@@ -140,7 +140,7 @@ class _FacultyStudentsTabState extends State<FacultyStudentsTab> {
                                 margin: const EdgeInsets.only(bottom: 12),
                                 child: ListTile(
                                   leading: CircleAvatar(
-                                    backgroundColor: Theme.of(context).colorScheme.secondary.withOpacity(0.1),
+                                    backgroundColor: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
                                     child: Text(student['first_name']?[0] ?? '?'),
                                   ),
                                   title: Text('${student['first_name']} ${student['last_name']}', style: const TextStyle(fontWeight: FontWeight.bold)),

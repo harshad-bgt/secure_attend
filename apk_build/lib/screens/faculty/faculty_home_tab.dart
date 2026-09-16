@@ -166,7 +166,7 @@ class _FacultyHomeTabState extends State<FacultyHomeTab> {
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.secondary.withOpacity(0.1),
+                            color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Icon(
@@ -232,7 +232,7 @@ class _FacultyHomeTabState extends State<FacultyHomeTab> {
                 margin: const EdgeInsets.only(bottom: 12),
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  side: BorderSide(color: Theme.of(context).colorScheme.secondary.withOpacity(0.3), width: 1),
+                  side: BorderSide(color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.3), width: 1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: ListTile(
@@ -240,7 +240,7 @@ class _FacultyHomeTabState extends State<FacultyHomeTab> {
                   leading: Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.secondary.withOpacity(0.1),
+                      color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(Icons.qr_code, color: Theme.of(context).colorScheme.secondary),

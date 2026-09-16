@@ -1,8 +1,6 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:geolocator/geolocator.dart';
-import '../core/api_client.dart';
 import 'student_face_verification.dart';
 
 class StudentQrScanner extends StatefulWidget {
@@ -102,7 +100,7 @@ class _StudentQrScannerState extends State<StudentQrScanner> {
     } 
 
     return await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
+      
       timeLimit: const Duration(seconds: 15)
     );
   }
@@ -192,7 +190,7 @@ class _StudentQrScannerState extends State<StudentQrScanner> {
                       margin: const EdgeInsets.only(bottom: 32),
                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary.withOpacity(0.85),
+                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.85),
                         borderRadius: BorderRadius.circular(24),
                       ),
                       child: _isProcessing 
@@ -217,7 +215,7 @@ class _StudentQrScannerState extends State<StudentQrScanner> {
                     width: 250,
                     height: 250,
                     decoration: BoxDecoration(
-                      border: Border.all(color: Colors.white.withOpacity(0.5), width: 3),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 3),
                       borderRadius: BorderRadius.circular(24),
                     ),
                   ),
