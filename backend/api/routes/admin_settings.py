@@ -41,13 +41,17 @@ def update_geofence_settings(
             id=1,
             latitude=request.latitude,
             longitude=request.longitude,
-            radius_meters=request.radius_meters
+            radius_meters=request.radius_meters,
+            qr_duration_seconds=request.qr_duration_seconds,
+            enforce_liveness=request.enforce_liveness
         )
         db.add(settings)
     else:
         settings.latitude = request.latitude
         settings.longitude = request.longitude
         settings.radius_meters = request.radius_meters
+        settings.qr_duration_seconds = request.qr_duration_seconds
+        settings.enforce_liveness = request.enforce_liveness
 
     db.commit()
     db.refresh(settings)

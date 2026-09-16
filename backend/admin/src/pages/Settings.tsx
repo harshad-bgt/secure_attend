@@ -7,7 +7,13 @@ import apiClient from '../api/client';
 export default function Settings() {
   const { user } = useAuth();
   
-  const [geofence, setGeofence] = useState({ latitude: 0, longitude: 0, radius_meters: 200 });
+  const [geofence, setGeofence] = useState({ 
+    latitude: 0, 
+    longitude: 0, 
+    radius_meters: 200,
+    qr_duration_seconds: 10,
+    enforce_liveness: true
+  });
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [message, setMessage] = useState<{type: 'success'|'error', text: string} | null>(null);
@@ -23,7 +29,9 @@ export default function Settings() {
         setGeofence({
           latitude: response.data.latitude,
           longitude: response.data.longitude,
-          radius_meters: response.data.radius_meters
+          radius_meters: response.data.radius_meters,
+          qr_duration_seconds: response.data.qr_duration_seconds ?? 10,
+          enforce_liveness: response.data.enforce_liveness ?? true
         });
       } catch (err: any) {
         if (err.response?.status !== 404) {
@@ -49,6 +57,25 @@ export default function Settings() {
       setMessage({ type: 'error', text: typeof errorMsg === 'string' ? errorMsg : 'Validation error.' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const [attendanceMessage, setAttendanceMessage] = useState<{type: 'success'|'error', text: string} | null>(null);
+  const [attendanceLoading, setAttendanceLoading] = useState(false);
+
+  const handleSaveAttendance = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    setAttendanceMessage(null);
+    setAttendanceLoading(true);
+    
+    try {
+      await apiClient.post('/admin/settings/geofence', geofence);
+      setAttendanceMessage({ type: 'success', text: 'Attendance configuration saved successfully.' });
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.detail || 'Failed to save configuration.';
+      setAttendanceMessage({ type: 'error', text: typeof errorMsg === 'string' ? errorMsg : 'Validation error.' });
+    } finally {
+      setAttendanceLoading(false);
     }
   };
 
@@ -149,26 +176,54 @@ export default function Settings() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {attendanceMessage && (
+                <div className={`p-3 rounded-lg text-sm ${attendanceMessage.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                  {attendanceMessage.text}
+                </div>
+              )}
               <div className="flex justify-between items-center py-3 border-b border-slate-100 dark:border-slate-800">
                 <div>
                   <h3 className="font-medium text-slate-800 dark:text-slate-200">Dynamic QR Duration</h3>
                   <p className="text-sm text-slate-500">How long each rotating QR code remains valid</p>
                 </div>
-                <select disabled className="bg-slate-50 border border-slate-200 dark:bg-slate-900 dark:border-slate-700 text-slate-500 rounded px-3 py-1.5 text-sm">
-                  <option>10 Seconds</option>
-                  <option>15 Seconds</option>
-                  <option>30 Seconds</option>
+                <select 
+                  value={geofence.qr_duration_seconds}
+                  onChange={(e) => {
+                    const newDuration = parseInt(e.target.value);
+                    setGeofence({...geofence, qr_duration_seconds: newDuration});
+                  }}
+                  className="bg-white border border-slate-300 dark:bg-slate-900 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
+                >
+                  <option value={10}>10 Seconds</option>
+                  <option value={15}>15 Seconds</option>
+                  <option value={30}>30 Seconds</option>
+                  <option value={60}>60 Seconds</option>
                 </select>
               </div>
 
-              <div className="flex justify-between items-center py-3 opacity-60">
+              <div className="flex justify-between items-center py-3">
                 <div>
                   <h3 className="font-medium text-slate-800 dark:text-slate-200">Enforce Liveness Detection</h3>
                   <p className="text-sm text-slate-500">Require face liveness during scan</p>
                 </div>
-                <div className="w-10 h-5 bg-blue-500 rounded-full relative cursor-not-allowed">
-                  <div className="w-4 h-4 bg-white rounded-full absolute right-0.5 top-0.5"></div>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setGeofence({...geofence, enforce_liveness: !geofence.enforce_liveness})}
+                  className={`w-10 h-5 rounded-full relative transition-colors ${geofence.enforce_liveness ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-700'}`}
+                >
+                  <div className={`w-4 h-4 bg-white rounded-full absolute top-0.5 transition-all ${geofence.enforce_liveness ? 'right-0.5' : 'left-0.5'}`}></div>
+                </button>
+              </div>
+              <div className="pt-2 mt-4 border-t border-slate-100 dark:border-slate-800 pt-4">
+                <button 
+                  type="button" 
+                  onClick={handleSaveAttendance}
+                  disabled={attendanceLoading}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                >
+                  <Save size={16} />
+                  {attendanceLoading ? 'Saving...' : 'Save Configuration'}
+                </button>
               </div>
             </CardContent>
           </Card>

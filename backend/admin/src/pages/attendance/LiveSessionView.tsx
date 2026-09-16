@@ -13,7 +13,7 @@ interface LiveSessionViewProps {
 
 export default function LiveSessionView({ sessionId, onClose }: LiveSessionViewProps) {
   const queryClient = useQueryClient();
-  const [countdown, setCountdown] = useState(60);
+  const [countdown, setCountdown] = useState(10);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Fetch QR Token every 59 seconds, or handle internally.
@@ -117,7 +117,7 @@ export default function LiveSessionView({ sessionId, onClose }: LiveSessionViewP
           <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
             <div 
               className={`h-full transition-all duration-1000 ease-linear ${countdown <= 3 ? 'bg-red-500' : 'bg-blue-500'}`}
-              style={{ width: `${(countdown / 60) * 100}%` }}
+              style={{ width: `${(countdown / (qrData?.valid_for || 10)) * 100}%` }}
             />
           </div>
         </div>

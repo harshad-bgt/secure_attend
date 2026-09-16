@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List
 from datetime import datetime
 
@@ -79,6 +79,8 @@ class CampusSettingsBase(BaseModel):
     latitude: float
     longitude: float
     radius_meters: float
+    qr_duration_seconds: int = Field(default=10, ge=5, le=60)
+    enforce_liveness: bool = Field(default=True)
 
 class CampusSettingsCreate(CampusSettingsBase):
     pass

@@ -127,11 +127,16 @@ def get_qr_token(session_id: int, db: Session = Depends(get_db), current_user: U
     if qr_expires_at and qr_expires_at.tzinfo is None:
         qr_expires_at = qr_expires_at.replace(tzinfo=timezone.utc)
     
+    # Fetch dynamic QR duration from settings
+    from models import CampusSettings
+    settings = db.query(CampusSettings).filter(CampusSettings.id == 1).first()
+    duration_seconds = settings.qr_duration_seconds if settings else 10
+
     # If there's no valid token, or it's expired, generate a new one
     if not qr_expires_at or qr_expires_at <= now:
-        token = create_attendance_qr_token(session_id=session.id, expires_in_seconds=60)
+        token = create_attendance_qr_token(session_id=session.id, expires_in_seconds=duration_seconds)
         session.current_qr_token = token
-        session.qr_expires_at = now + timedelta(seconds=60)
+        session.qr_expires_at = now + timedelta(seconds=duration_seconds)
         db.commit()
         qr_expires_at = session.qr_expires_at
         if qr_expires_at and qr_expires_at.tzinfo is None:
@@ -147,7 +152,7 @@ def get_qr_token(session_id: int, db: Session = Depends(get_db), current_user: U
         "expires_at": session.qr_expires_at.isoformat(),
         "server_time": now.isoformat(),
         "expires_in": expires_in,
-        "valid_for": 60
+        "valid_for": duration_seconds
     }
 
 @router.get("/{session_id}/attendance", response_model=LiveAttendanceResponse)
