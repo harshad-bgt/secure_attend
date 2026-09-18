@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../core/api_client.dart';
-import 'student_qr_scanner.dart';
+
 import 'student_face_enrollment.dart';
+import 'student_face_verification.dart';
 
 class StudentHomeTab extends StatefulWidget {
   final Map<String, dynamic> profile;
@@ -290,7 +291,7 @@ class _StudentHomeTabState extends State<StudentHomeTab> {
                 } else {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const StudentQrScanner()),
+                    MaterialPageRoute(builder: (_) => const StudentFaceVerification()),
                   );
                 }
               },

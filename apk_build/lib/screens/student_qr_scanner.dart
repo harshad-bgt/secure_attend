@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:geolocator/geolocator.dart';
-import 'student_face_verification.dart';
+import 'dart:convert';
+import '../core/api_client.dart';
 
 class StudentQrScanner extends StatefulWidget {
-  const StudentQrScanner({super.key});
+  final String faceProofToken;
+  
+  const StudentQrScanner({super.key, required this.faceProofToken});
 
   @override
   State<StudentQrScanner> createState() => _StudentQrScannerState();
@@ -15,28 +18,17 @@ class _StudentQrScannerState extends State<StudentQrScanner> {
     formats: const [BarcodeFormat.qrCode],
   );
   bool _isProcessing = false;
-  String _statusMessage = 'Point camera at the session QR code';
+  bool _isFetchingLocation = true;
+  String _statusMessage = 'Validating Location...';
+  Position? _currentPosition;
 
   @override
-  void dispose() {
-    _scannerController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _fetchLocationAndInit();
   }
 
-  Future<void> _handleQrDetect(BarcodeCapture capture) async {
-    if (_isProcessing) return;
-    
-    final List<Barcode> barcodes = capture.barcodes;
-    if (barcodes.isEmpty || barcodes.first.rawValue == null) return;
-    
-    final qrData = barcodes.first.rawValue!;
-    setState(() {
-      _isProcessing = true;
-      _statusMessage = 'Fetching location...';
-    });
-    
-    _scannerController.stop();
-
+  Future<void> _fetchLocationAndInit() async {
     try {
       Position position = await _determinePosition();
       
@@ -46,33 +38,84 @@ class _StudentQrScannerState extends State<StudentQrScanner> {
           SnackBar(content: const Text('Mock location detected. Attendance rejected.'), backgroundColor: Theme.of(context).colorScheme.error),
         );
         setState(() {
-          _isProcessing = false;
+          _isFetchingLocation = false;
           _statusMessage = 'Location rejected. Try again.';
         });
-        _scannerController.start();
         return;
       }
       
       if (!mounted) return;
       
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => StudentFaceVerification(
-            qrToken: qrData,
-            latitude: position.latitude,
-            longitude: position.longitude,
-          ),
-        ),
-      );
+      setState(() {
+        _currentPosition = position;
+        _isFetchingLocation = false;
+        _statusMessage = 'Point camera at the session QR code';
+      });
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.toString()), backgroundColor: Theme.of(context).colorScheme.error),
       );
       setState(() {
+        _isFetchingLocation = false;
+        _statusMessage = 'Location failed. Please try again.';
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _scannerController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleQrDetect(BarcodeCapture capture) async {
+    if (_isProcessing || _currentPosition == null) return;
+    
+    final List<Barcode> barcodes = capture.barcodes;
+    if (barcodes.isEmpty || barcodes.first.rawValue == null) return;
+    
+    final qrData = barcodes.first.rawValue!;
+    setState(() {
+      _isProcessing = true;
+      _statusMessage = 'Recording attendance...';
+    });
+    
+    _scannerController.stop();
+
+    try {
+      final markResponse = await ApiClient.post('/student/attendance/mark', body: {
+        'qr_token': qrData,
+        'face_proof_token': widget.faceProofToken,
+        'latitude': _currentPosition!.latitude,
+        'longitude': _currentPosition!.longitude,
+      });
+      
+      if (!mounted) return;
+
+      if (markResponse.statusCode == 200) {
+        final markData = jsonDecode(markResponse.body);
+        _showSuccessDialog(markData);
+      } else {
+        String err = "Attendance failed. Session QR may be expired.";
+        try { err = jsonDecode(markResponse.body)['detail'] ?? err; } catch (_) {}
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(err), backgroundColor: Theme.of(context).colorScheme.error),
+        );
+        setState(() {
+          _isProcessing = false;
+          _statusMessage = 'Scan failed. Try again.';
+        });
+        _scannerController.start();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: const Text('Network error. Please check your connection.'), backgroundColor: Theme.of(context).colorScheme.error),
+      );
+      setState(() {
         _isProcessing = false;
-        _statusMessage = 'Location failed. Scan again.';
+        _statusMessage = 'Network error. Try again.';
       });
       _scannerController.start();
     }
@@ -99,9 +142,71 @@ class _StudentQrScannerState extends State<StudentQrScanner> {
       return Future.error('Location permissions are permanently denied, we cannot request permissions.');
     } 
 
-    return await Geolocator.getCurrentPosition(
-      
-      timeLimit: const Duration(seconds: 15)
+    try {
+      return await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          timeLimit: Duration(seconds: 30)
+        )
+      );
+    } catch (e) {
+      // Fallback to last known position if timeout or error
+      final lastKnown = await Geolocator.getLastKnownPosition();
+      if (lastKnown != null) {
+        return lastKnown;
+      }
+      return Future.error('Location timeout. Could not fetch location.');
+    }
+  }
+
+  void _showSuccessDialog(Map<String, dynamic> data) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Attendance Recorded', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.check_circle, color: Colors.green, size: 80),
+            const SizedBox(height: 24),
+            _buildChecklistItem('Identity Verified'),
+            const SizedBox(height: 8),
+            _buildChecklistItem('Location Verified'),
+            const SizedBox(height: 8),
+            _buildChecklistItem('Session Verified'),
+            const SizedBox(height: 24),
+            Text(
+              '${data["subject_name"]} • ${data["faculty_name"]}',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.secondary),
+              onPressed: () {
+                Navigator.pop(ctx);
+                Navigator.pop(context); // Go back to dashboard
+              }, 
+              child: const Text('Return to Dashboard')
+            ),
+          )
+        ],
+      )
+    );
+  }
+
+  Widget _buildChecklistItem(String text) {
+    return Row(
+      children: [
+        const Icon(Icons.check, color: Colors.green, size: 20),
+        const SizedBox(width: 8),
+        Text(text, style: const TextStyle(fontWeight: FontWeight.bold)),
+      ],
     );
   }
 
@@ -112,11 +217,11 @@ class _StudentQrScannerState extends State<StudentQrScanner> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _buildStep(1, 'Session', true),
-          _buildLine(false),
-          _buildStep(2, 'Identity', false),
-          _buildLine(false),
-          _buildStep(3, 'Done', false),
+          _buildStep(1, 'Identity', true, isCompleted: true),
+          _buildLine(true),
+          _buildStep(2, 'Location', true, isCompleted: !_isFetchingLocation && _currentPosition != null),
+          _buildLine(!_isFetchingLocation && _currentPosition != null),
+          _buildStep(3, 'Session QR', !_isFetchingLocation && _currentPosition != null),
         ],
       ),
     );
@@ -183,6 +288,13 @@ class _StudentQrScannerState extends State<StudentQrScanner> {
                   controller: _scannerController,
                   onDetect: _handleQrDetect,
                 ),
+                
+                if (_isFetchingLocation || _currentPosition == null)
+                  Container(
+                    color: Theme.of(context).colorScheme.surface,
+                    child: const Center(child: CircularProgressIndicator()),
+                  ),
+                  
                 SafeArea(
                   child: Align(
                     alignment: Alignment.bottomCenter,
@@ -193,7 +305,7 @@ class _StudentQrScannerState extends State<StudentQrScanner> {
                         color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.85),
                         borderRadius: BorderRadius.circular(24),
                       ),
-                      child: _isProcessing 
+                      child: _isProcessing || _isFetchingLocation
                         ? Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -210,16 +322,17 @@ class _StudentQrScannerState extends State<StudentQrScanner> {
                   ),
                 ),
                 // Center reticle
-                Center(
-                  child: Container(
-                    width: 250,
-                    height: 250,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 3),
-                      borderRadius: BorderRadius.circular(24),
+                if (!_isFetchingLocation && _currentPosition != null)
+                  Center(
+                    child: Container(
+                      width: 250,
+                      height: 250,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 3),
+                        borderRadius: BorderRadius.circular(24),
+                      ),
                     ),
-                  ),
-                )
+                  )
               ],
             ),
           ),
